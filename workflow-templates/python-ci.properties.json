@@ -1,0 +1,6 @@
+{
+    "name": "Python CI",
+    "description": "Integración continua para proyectos Python con tests y cobertura",
+    "iconName": "octicon code",
+    "categories": ["Python", "Testing"]
+}

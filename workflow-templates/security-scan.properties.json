@@ -1,0 +1,6 @@
+{
+    "name": "Security Scanning",
+    "description": "Workflow robusto de seguridad con Gitleaks, Bandit, Semgrep y Trivy",
+    "iconName": "octicon shield",
+    "categories": ["Security"]
+}

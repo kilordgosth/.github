@@ -1,0 +1,16 @@
+name: Security Scanning
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: '0 14 * * *'
+
+jobs:
+  security:
+    uses: kilordgosth/.github/.github/workflows/security-scan.yml@main
+    with:
+      lenguaje: 'todos'
+      debug: false
+    secrets: inherit

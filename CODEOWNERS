@@ -1,0 +1,10 @@
+# Revisor por defecto para todo el repo
+* @kilordgosth
+
+# Workflows de seguridad
+.github/workflows/ @kilordgosth
+workflow-templates/ @kilordgosth
+
+# Templates
+ISSUE_TEMPLATE/ @kilordgosth
+PULL_REQUEST_TEMPLATE/ @kilordgosth
