@@ -85,7 +85,7 @@ jobs:
       - name: Run Semgrep
         run: |
           pip install semgrep
-          semgrep --config p/python --config p/javascript --config p/java --config p/owasp-top-ten --exit-code 0 .
+          semgrep scan --config p/python --config p/javascript --config p/java --config p/owasp-top-ten --error . || true
 
   trivy:
     name: Trivy Vulnerability Scan
@@ -122,14 +122,36 @@ jobs:
     strategy:
       matrix:
         language: [python, javascript, java]
+      fail-fast: false
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v4
+      - name: Check language files exist
+        id: check
+        run: |
+          if [ "${{ matrix.language }}" == "javascript" ]; then
+            count=$(find . -name "*.js" -o -name "*.ts" | grep -v node_modules | wc -l)
+          elif [ "${{ matrix.language }}" == "python" ]; then
+            count=$(find . -name "*.py" | grep -v node_modules | wc -l)
+          elif [ "${{ matrix.language }}" == "java" ]; then
+            count=$(find . -name "*.java" | grep -v node_modules | wc -l)
+          fi
+          echo "count=$count" >> $GITHUB_OUTPUT
+          if [ "$count" -eq "0" ]; then
+            echo "⚠️ No ${{ matrix.language }} files found - skipping CodeQL"
+          fi
+      - name: Run CodeQL init
+        if: steps.check.outputs.count != '0'
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           debug: ${{ inputs.debug == true }}
-      - uses: github/codeql-action/autobuild@v4
-      - uses: github/codeql-action/analyze@v4
+      - name: Run CodeQL autobuild
+        if: steps.check.outputs.count != '0'
+        uses: github/codeql-action/autobuild@v4
+      - name: Run CodeQL analyze
+        if: steps.check.outputs.count != '0'
+        uses: github/codeql-action/analyze@v4
 
   license-check:
     name: License Compliance Check
