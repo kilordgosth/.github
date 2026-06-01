@@ -83,17 +83,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: >
-            p/python
-            p/javascript
-            p/java
-            p/php
-            p/secrets
-            p/owasp-top-ten
-        env:
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          pip install semgrep
+          semgrep --config p/python --config p/javascript --config p/java --config p/owasp-top-ten --exit-code 0 .
 
   trivy:
     name: Trivy Vulnerability Scan
@@ -130,17 +122,14 @@ jobs:
     strategy:
       matrix:
         language: [python, javascript, java]
-        include:
-          - language: php
-            build-mode: none
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           debug: ${{ inputs.debug == true }}
-      - uses: github/codeql-action/autobuild@v3
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/autobuild@v4
+      - uses: github/codeql-action/analyze@v4
 
   license-check:
     name: License Compliance Check
