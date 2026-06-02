@@ -103,6 +103,44 @@ jobs:
           severity: 'HIGH,CRITICAL'
           debug: ${{ inputs.debug == true }}
 
+  # --- ADICIÓN: Auditoría de dependencias NPM (Para el Portafolio y Apps JS) ---
+  npm-audit:
+    name: NPM Dependency Audit
+    if: ${{ inputs.lenguaje == 'javascript' || inputs.lenguaje == 'todos' || github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run npm audit
+        run: |
+          if [ -f package.json ]; then
+            npm audit --audit-level=high || true
+          else
+            echo "⚠️ No package.json found - skipping audit"
+          fi
+
+  # --- ADICIÓN: Linter de Seguridad (Valida vercel.json, locales/*.json, YAML) ---
+  linter:
+    name: Config & JSON Linting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Super-Linter
+        uses: github/super-linter/slim@v5
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_JSON: true
+          VALIDATE_YAML: true
+          VALIDATE_JAVASCRIPT_ESLINT: false
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   codeql:
     name: CodeQL Analysis
     if: |
@@ -137,9 +175,6 @@ jobs:
             count=$(find . -name "*.java" | grep -v node_modules | wc -l)
           fi
           echo "count=$count" >> $GITHUB_OUTPUT
-          if [ "$count" -eq "0" ]; then
-            echo "⚠️ No ${{ matrix.language }} files found - skipping CodeQL"
-          fi
       - name: Run CodeQL init
         if: steps.check.outputs.count != '0'
         uses: github/codeql-action/init@v4
@@ -173,7 +208,7 @@ jobs:
   summary:
     name: Security Summary
     runs-on: ubuntu-latest
-    needs: [gitleaks, bandit, semgrep, trivy, license-check]
+    needs: [gitleaks, bandit, semgrep, trivy, license-check, npm-audit, linter]
     if: always()
     permissions:
       contents: read
@@ -184,6 +219,8 @@ jobs:
           BANDIT_RESULT: ${{ needs.bandit.result }}
           SEMGREP_RESULT: ${{ needs.semgrep.result }}
           TRIVY_RESULT: ${{ needs.trivy.result }}
+          NPM_RESULT: ${{ needs.npm-audit.result }}
+          LINTER_RESULT: ${{ needs.linter.result }}
           LICENSE_RESULT: ${{ needs.license-check.result }}
           LENGUAJE: ${{ inputs.lenguaje || 'todos' }}
           DEBUG: ${{ inputs.debug || 'false' }}
@@ -193,13 +230,16 @@ jobs:
           echo "## 🔒 Robust Security Scan Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Secret Scanning | $GITLEAKS_RESULT |" >> $GITHUB_STEP_SUMMARY
-          echo "| Bandit SAST | $BANDIT_RESULT |" >> $GITHUB_STEP_SUMMARY
-          echo "| Semgrep | $SEMGREP_RESULT |" >> $GITHUB_STEP_SUMMARY
-          echo "| Trivy | $TRIVY_RESULT |" >> $GITHUB_STEP_SUMMARY
-          echo "| License Check | $LICENSE_RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scanning (Gitleaks) | $GITLEAKS_RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bandit SAST (Python) | $BANDIT_RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "| Semgrep Multi-lang | $SEMGREP_RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Vulnerability Scan | $TRIVY_RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "| NPM Dependency Audit | $NPM_RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "| Config & JSON Linting | $LINTER_RESULT |" >> $GITHUB_STEP_SUMMARY
+          echo "| License Compliance | $LICENSE_RESULT |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Lenguaje:** $LENGUAJE" >> $GITHUB_STEP_SUMMARY
-          echo "- **Debug:** $DEBUG" >> $GITHUB_STEP_SUMMARY
-          echo "- **Visibilidad:** $VISIBILIDAD" >> $GITHUB_STEP_SUMMARY
-          echo "- **Disparado por:** $EVENTO" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Contexto" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lenguaje Seleccionado:** $LENGUAJE" >> $GITHUB_STEP_SUMMARY
+          echo "- **Modo Debug:** $DEBUG" >> $GITHUB_STEP_SUMMARY
+          echo "- **Visibilidad Repo:** $VISIBILIDAD" >> $GITHUB_STEP_SUMMARY
+          echo "- **Evento de Disparo:** $EVENTO" >> $GITHUB_STEP_SUMMARY
